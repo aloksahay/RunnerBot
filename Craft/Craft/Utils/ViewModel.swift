@@ -14,7 +14,7 @@ public class ViewModel: ObservableObject {
     @Published public var user: Web3AuthState?
     @Published public var isLoading = false
     // IMP START - Get your Web3Auth Client ID from Dashboard
-    private var clientId = environment.web3AuthClientId
+    private var clientId = CraftEnvironmentVariables.web3AuthClientId
     // IMP END - Get your Web3Auth Client ID from Dashboard
     // IMP START - Whitelist bundle ID
     private var network: Network = .sapphire_devnet
@@ -33,7 +33,7 @@ public class ViewModel: ObservableObject {
             web3Auth = try await Web3Auth(W3AInitParams(
                 clientId: clientId,
                 network: network,
-                redirectUrl: environment.web3AuthRedirectURL
+                redirectUrl: CraftEnvironmentVariables.web3AuthRedirectURL
             ))
         } catch {
             print("Something went wrong")
