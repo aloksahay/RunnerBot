@@ -13,6 +13,7 @@ struct QuickPoseBasicView: View {
 
     private var quickPose = QuickPose(sdkKey: CraftEnvironmentVariables.quickPoseSDKKey)
     @State private var overlayImage: UIImage?
+    @State private var showOverlay = true
     
     var body: some View {
         GeometryReader { geometry in
@@ -22,29 +23,50 @@ struct QuickPoseBasicView: View {
                 } else {
                     QuickPoseCameraView(useFrontCamera: true, delegate: quickPose)
                 }
-                QuickPoseOverlayView(overlayImage: $overlayImage)
+                if showOverlay {
+                    QuickPoseOverlayView(overlayImage: $overlayImage)
+                }
+                VStack {
+                    Button(action: { showOverlay.toggle() }) {
+                        HStack {
+                            Image(systemName: showOverlay ? "eye.fill" : "eye.slash.fill")
+                            Text(showOverlay ? "Hide Overlay" : "Show Overlay")
+                        }
+                        .padding()
+                        .background(Color.black.opacity(0.6))
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                    }
+                    .padding(.top, 40)
+                    
+                    Spacer()
+                }
             }
             .frame(width: geometry.size.width)
             .edgesIgnoringSafeArea(.all)
             .onAppear {
-                quickPose.start(features: [.overlay(.wholeBody)], onFrame: { status, image, features, feedback, landmarks in
-                    overlayImage = image
+                quickPose.start(features: [.overlay(.wholeBodyAndHead)], onFrame: { status, image, features, feedback, landmarks in
+                    if showOverlay {
+                        overlayImage = image
+                    } else {
+                        overlayImage = nil
+                    }
                     if case .success = status {
                         
+                        
+                        
+                        
                     } else {
-                        // show error feedback
+                        print("Error")
                     }
                 })
             }.onDisappear {
                 quickPose.stop()
             }
-            .overlay(alignment: .bottom) {
-                Text("Powered by QuickPose.ai v\(quickPose.quickPoseVersion())") // remove logo here, but attribution appreciated
-                    .font(.system(size: 16, weight: .semibold)).foregroundColor(.white)
-                    .frame(maxHeight:  40 + geometry.safeAreaInsets.bottom, alignment: .center)
-                    .padding(.bottom, 0)
-            }
-            
         }
     }
+}
+
+#Preview {
+    QuickPoseBasicView()
 }
