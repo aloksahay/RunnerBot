@@ -8,34 +8,73 @@
 import Foundation
 
 class VideoDataManager {
-    private let baseURL = "http://localhost:3000/api/v1"
+    private let baseURL = "http://192.168.1.112:3000/api/v1"
     private let nillion: NillionWrapper
     
     init(nillionCluster: Any) {
         self.nillion = NillionWrapper()
     }
     
-    func uploadVideoData(walletAddress: String, videoCID: String, recordingData: RecordingData) async throws {
-        try await nillion.initialize()
+    func checkServerConnection() async throws -> Bool {
+        print("Checking server connection...")
+        print("Connecting to:", baseURL)
         
-        let url = URL(string: "\(baseURL)/data/create")!
+        let url = URL(string: "\(baseURL)/health")!
         var request = URLRequest(url: url)
-        request.httpMethod = "POST"
+        request.httpMethod = "GET"
+        request.timeoutInterval = 5
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        let payload: [String: Any] = [
-            "wallet_address": walletAddress,
-            "video_cid": videoCID,
-            "recording_data": try await nillion.encrypt(recordingData)
-        ]
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                print("Error: Response is not HTTP")
+                return false
+            }
+            
+            if httpResponse.statusCode == 200,
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let status = json["status"] as? String,
+               status == "ok" {
+                print("Successfully connected to server")
+                return true
+            }
+            
+            print("Server returned invalid status code:", httpResponse.statusCode)
+            return false
+        } catch {
+            print("Server connection failed:", error.localizedDescription)
+            return false
+        }
+    }
+    
+    func uploadVideoData(walletAddress: String, videoCID: String, recordingData: RecordingData) async throws {
+        print("Starting video data upload:")
+        print("- Wallet:", walletAddress)
+        print("- Video CID:", videoCID)
+        print("- Recording frames:", recordingData.frames.count)
         
-        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+        try await nillion.initialize()
+        print("Nillion initialized")
         
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw NSError(domain: "APIError", code: -1,
-                         userInfo: [NSLocalizedDescriptionKey: "Upload failed"])
+        do {
+            let success = try await nillion.uploadRecording(
+                walletAddress: walletAddress,
+                videoCID: videoCID,
+                recordingData: recordingData
+            )
+            
+            if success {
+                print("Upload completed successfully")
+            } else {
+                throw NSError(domain: "UploadError", code: -1,
+                             userInfo: [NSLocalizedDescriptionKey: "Not all chunks were uploaded successfully"])
+            }
+        } catch {
+            print("Upload failed with error:", error)
+            print("Error details:", error.localizedDescription)
+            throw error
         }
     }
     

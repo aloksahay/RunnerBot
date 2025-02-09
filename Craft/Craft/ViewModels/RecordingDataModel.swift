@@ -9,36 +9,6 @@ import SwiftUI
 import QuickPoseCore
 import QuickPoseSwiftUI
 
-struct UploadVideoRecord: Codable {
-    let id: String
-    let wallet_address: String
-    let video_cid: String
-    let recording_data: ShareWrapper
-    
-    struct ShareWrapper: Codable {
-        let share: RecordingData
-        
-        enum CodingKeys: String, CodingKey {
-            case share = "$share"
-        }
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case id = "_id"
-        case wallet_address
-        case video_cid
-        case recording_data
-    }
-    
-    init(recordingData: RecordingData, walletAddress: String, videoCID: String) {
-        self.id = UUID().uuidString
-        self.wallet_address = walletAddress
-        self.video_cid = videoCID
-        self.recording_data = ShareWrapper(share: recordingData)
-    }
-}
-
-
 struct RecordingData: Codable {
     let id: String
     let timestamp: Date

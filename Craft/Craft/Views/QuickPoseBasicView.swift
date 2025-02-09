@@ -23,6 +23,7 @@ struct QuickPoseBasicView: View {
     @State private var isUploading = false
     @State private var showAlert = false
     @State private var alertMessage = ""
+    @State private var isServerConnected = false
     
     // Define a struct to store frame data
     var body: some View {
@@ -73,10 +74,20 @@ struct QuickPoseBasicView: View {
                     Spacer()
                 }
                 uploadingOverlay
+                if !isServerConnected {
+                    Text("Server not connected")
+                        .foregroundColor(.red)
+                        .padding()
+                        .background(Color.black.opacity(0.7))
+                        .cornerRadius(8)
+                        .padding(.top, 100)
+                }
             }
             .frame(width: geometry.size.width)
             .edgesIgnoringSafeArea(.all)
             .onAppear {
+                startConnectionCheck() // Start periodic connection check
+                
                 quickPose.start(features: [.overlay(.wholeBodyAndHead)], onFrame: { status, image, features, feedback, landmarks in
                     if showOverlay {
                         overlayImage = image
@@ -246,6 +257,29 @@ struct QuickPoseBasicView: View {
             }
         } catch {
             print("Verification failed: \(error)")
+        }
+    }
+    
+    private func startConnectionCheck() {
+        Task {
+            while true {
+                do {
+                    print("\nChecking server connection...")
+                    isServerConnected = try await videoDataManager.checkServerConnection()
+                    print("Server connected:", isServerConnected)
+                    
+                    if !isServerConnected {
+                        // Wait 5 seconds before trying again
+                        try await Task.sleep(nanoseconds: 5_000_000_000)
+                    } else {
+                        // If connected, check every 30 seconds
+                        try await Task.sleep(nanoseconds: 30_000_000_000)
+                    }
+                } catch {
+                    print("Connection check error:", error)
+                    try? await Task.sleep(nanoseconds: 5_000_000_000)
+                }
+            }
         }
     }
 }

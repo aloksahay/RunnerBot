@@ -1,5 +1,5 @@
 import { SecretVaultWrapper } from 'nillion-sv-wrappers';
-import { orgConfig } from './nillionOrgConfig.js';
+import { cluster } from './nillionOrgConfig.js';
 import { readFile } from 'fs/promises';
 
 async function main() {
@@ -10,8 +10,8 @@ async function main() {
     );
 
     const org = new SecretVaultWrapper(
-      orgConfig.nodes,
-      orgConfig.orgCredentials
+      cluster.nodes,
+      cluster.credentials
     );
     await org.init();
 
@@ -20,6 +20,9 @@ async function main() {
     const newSchema = await org.createSchema(schema, collectionName);
     console.log('✅ New Collection Schema created for all nodes:', newSchema);
     console.log('👀 Schema ID:', newSchema[0].result.data);
+
+    // Save this schema ID to use in your server
+    console.log('\nUpdate your nillionOrgConfig.js with this schema ID!');
   } catch (error) {
     console.error('❌ Failed to use SecretVaultWrapper:', error.message);
     process.exit(1);
