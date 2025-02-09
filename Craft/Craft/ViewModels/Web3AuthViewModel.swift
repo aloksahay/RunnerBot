@@ -8,7 +8,7 @@
 import Foundation
 import Web3Auth
 
-public class ViewModel: ObservableObject {
+public class Web3AuthViewModel: ObservableObject {
     public var web3Auth: Web3Auth?
     @Published public var loggedIn: Bool = false
     @Published public var user: Web3AuthState?

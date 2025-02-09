@@ -11,7 +11,7 @@ import Foundation
 import web3
 
 struct LoginView: View {
-    @StateObject var vm: ViewModel
+    @StateObject var vm: Web3AuthViewModel
     @State private var emailInput: String = ""
     
     var body: some View {
@@ -87,7 +87,7 @@ struct LoginView: View {
 
 struct LoginView_Previews: PreviewProvider {
     static var previews: some View {
-        let mockViewModel = ViewModel()
+        let mockViewModel = Web3AuthViewModel()
         
         // Initialize preview environment
         return Group {

@@ -12,7 +12,7 @@ struct UserDetailView: View {
     @State private var isPrivateKeySectionVisible = false
     @State private var showingAlert = false
     @StateObject var web3RPC: Web3RPC
-    @StateObject var viewModel: ViewModel
+    @StateObject var viewModel: Web3AuthViewModel
 
     var body: some View {
         if let user = viewModel.user {
