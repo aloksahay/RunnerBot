@@ -91,6 +91,14 @@ try {
             }
             
             console.log('All chunks written successfully');
+            console.log('Response data:', JSON.stringify({
+                success: true,
+                data: {
+                    chunks: chunks.length,
+                    total_chunks: chunks.length,
+                    results
+                }
+            }, null, 2));
             
             res.status(200).json({
                 success: true,
