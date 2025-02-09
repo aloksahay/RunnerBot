@@ -97,13 +97,9 @@ struct QuickPoseBasicView: View {
     
     private func startRecording() {
         recordedFramesData.removeAll()
-        // Start video recording without overlay
-        // You'll need to implement actual video recording using AVFoundation
     }
     
     private func stopRecording() {
-        // Stop video recording
-        // Save video file and AI data separately
         saveRecordingData()
     }
     
