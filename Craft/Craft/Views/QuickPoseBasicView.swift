@@ -14,10 +14,15 @@ import QuickPoseSwiftUI
 struct QuickPoseBasicView: View {
 
     private var quickPose = QuickPose(sdkKey: CraftEnvironmentVariables.quickPoseSDKKey)
+    private let videoDataManager = VideoDataManager(nillionCluster: [:]) // Empty dictionary as placeholder for now
+    
     @State private var overlayImage: UIImage?
     @State private var showOverlay = true
     @State private var isRecording = false
     @State private var recordedFramesData: [FrameData] = [] // Store AI data during recording
+    @State private var isUploading = false
+    @State private var showAlert = false
+    @State private var alertMessage = ""
     
     // Define a struct to store frame data
     var body: some View {
@@ -67,6 +72,7 @@ struct QuickPoseBasicView: View {
                     
                     Spacer()
                 }
+                uploadingOverlay
             }
             .frame(width: geometry.size.width)
             .edgesIgnoringSafeArea(.all)
@@ -93,6 +99,11 @@ struct QuickPoseBasicView: View {
                 quickPose.stop()
             }
         }
+        .alert("Recording Status", isPresented: $showAlert) {
+            Button("OK") { }
+        } message: {
+            Text(alertMessage)
+        }
     }
     
     private func startRecording() {
@@ -110,24 +121,69 @@ struct QuickPoseBasicView: View {
             frames: recordedFramesData
         )
         
+        // First save locally
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = .prettyPrinted
             let data = try encoder.encode(recordingData)
             
-            // Save to documents directory
             let documentsDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
             let fileURL = documentsDirectory.appendingPathComponent("\(recordingData.id).json")
             
             try data.write(to: fileURL)
-            print("Saved recording data to: \(fileURL)")
+            print("Saved recording data locally to: \(fileURL)")
             
-            // Optional: Print the JSON for debugging
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("Recording data JSON:\n\(jsonString)")
+            // Then upload to Nillion
+            Task {
+                await uploadToNillion(recordingData)
             }
         } catch {
-            print("Failed to save recording data: \(error)")
+            showAlert(message: "Failed to save recording: \(error.localizedDescription)")
+        }
+    }
+    
+    private func uploadToNillion(_ recordingData: RecordingData) async {
+        do {
+            isUploading = true
+            // TODO: Get these values from your app's state/environment
+            let walletAddress = "YOUR_WALLET_ADDRESS" // Replace with actual wallet address
+            let videoCID = "YOUR_VIDEO_CID" // Replace with actual video CID or generate one
+            
+            try await videoDataManager.uploadVideoData(
+                walletAddress: walletAddress,
+                videoCID: videoCID,
+                recordingData: recordingData
+            )
+            
+            await MainActor.run {
+                showAlert(message: "Recording uploaded successfully!")
+            }
+        } catch {
+            await MainActor.run {
+                showAlert(message: "Failed to upload: \(error.localizedDescription)")
+            }
+        }
+        await MainActor.run {
+            isUploading = false
+        }
+    }
+    
+    private func showAlert(message: String) {
+        alertMessage = message
+        showAlert = true
+    }
+    
+    // Add this to your view's body
+    var uploadingOverlay: some View {
+        Group {
+            if isUploading {
+                Color.black.opacity(0.5)
+                    .edgesIgnoringSafeArea(.all)
+                    .overlay(
+                        ProgressView("Uploading...")
+                            .foregroundColor(.white)
+                    )
+            }
         }
     }
     
@@ -144,6 +200,29 @@ struct QuickPoseBasicView: View {
         } catch {
             print("Failed to load recording data: \(error)")
             return nil
+        }
+    }
+    
+    // Function to fetch recordings for a wallet
+    func fetchRecordings(walletAddress: String) async {
+        do {
+            let recordings = try await videoDataManager.fetchVideosForWallet(walletAddress: walletAddress)
+            print("Retrieved \(recordings.count) recordings")
+            // Handle the retrieved recordings (e.g., display them in a list)
+        } catch {
+            showAlert(message: "Failed to fetch recordings: \(error.localizedDescription)")
+        }
+    }
+    
+    // Function to fetch a specific recording
+    func fetchRecording(videoCID: String) async {
+        do {
+            if let recording = try await videoDataManager.fetchVideoData(videoCID: videoCID) {
+                print("Retrieved recording with ID: \(recording.id)")
+                // Handle the retrieved recording
+            }
+        } catch {
+            showAlert(message: "Failed to fetch recording: \(error.localizedDescription)")
         }
     }
 }
