@@ -145,9 +145,15 @@ struct QuickPoseBasicView: View {
     private func uploadToNillion(_ recordingData: RecordingData) async {
         do {
             isUploading = true
-            // TODO: Get these values from your app's state/environment
-            let walletAddress = "YOUR_WALLET_ADDRESS" // Replace with actual wallet address
-            let videoCID = "YOUR_VIDEO_CID" // Replace with actual video CID or generate one
+            // Test values
+            let walletAddress = "0x177E7baaC808C6608f4D32F9E360F67E1cCB5165"  // Test wallet address
+            let videoCID = "QmTest" + UUID().uuidString  // Unique test CID
+            
+            print("Attempting upload with:")
+            print("Wallet: \(walletAddress)")
+            print("Video CID: \(videoCID)")
+            print("Recording ID: \(recordingData.id)")
+            print("Frames count: \(recordingData.frames.count)")
             
             try await videoDataManager.uploadVideoData(
                 walletAddress: walletAddress,
@@ -157,10 +163,12 @@ struct QuickPoseBasicView: View {
             
             await MainActor.run {
                 showAlert(message: "Recording uploaded successfully!")
+                print("Upload successful!")
             }
         } catch {
             await MainActor.run {
                 showAlert(message: "Failed to upload: \(error.localizedDescription)")
+                print("Upload failed: \(error)")
             }
         }
         await MainActor.run {
@@ -223,6 +231,21 @@ struct QuickPoseBasicView: View {
             }
         } catch {
             showAlert(message: "Failed to fetch recording: \(error.localizedDescription)")
+        }
+    }
+    
+    // Add this after recording stops
+    private func verifyUpload(walletAddress: String) async {
+        do {
+            let recordings = try await videoDataManager.fetchVideosForWallet(walletAddress: walletAddress)
+            print("Found \(recordings.count) recordings for wallet \(walletAddress)")
+            for recording in recordings {
+                print("Recording ID: \(recording.id)")
+                print("Timestamp: \(recording.timestamp)")
+                print("Frames: \(recording.frames.count)")
+            }
+        } catch {
+            print("Verification failed: \(error)")
         }
     }
 }
