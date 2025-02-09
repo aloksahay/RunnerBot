@@ -3,6 +3,9 @@ import cors from 'cors';
 import { SecretVaultWrapper } from 'nillion-sv-wrappers';
 import { v4 as uuidv4 } from 'uuid';
 import { cluster } from './nillionOrgConfig.js';
+import { CraftAgentService } from './services/agentService.js';
+import { uploadToIPFS } from './config/ipfsConfig.js';
+import { ethers } from 'ethers';
 
 const app = express();
 
@@ -27,6 +30,13 @@ try {
     console.log('Wrapper created');
     await nillionWrapper.init();
     console.log('Wrapper initialized');
+
+    // Initialize agent service
+    const provider = new ethers.providers.JsonRpcProvider(process.env.BASE_TESTNET_RPC);
+    const agentService = new CraftAgentService(
+        process.env.CRAFT_AGENT_CONTRACT_ADDRESS,
+        provider
+    );
 
     // Add this after your middleware setup and before other routes
     app.get('/api/v1/health', (req, res) => {
@@ -148,6 +158,68 @@ try {
                     data: []
                 });
             }
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                errors: [{ message: error.message }]
+            });
+        }
+    });
+
+    // Add new endpoints
+    app.post('/api/v1/content/upload', async (req, res) => {
+        try {
+            const { video, modelData, title, tags } = req.body;
+            const walletAddress = req.headers['x-wallet-address'];
+
+            // Upload video to IPFS
+            const videoCID = await uploadToIPFS(video, {
+                title,
+                tags,
+                creator: walletAddress
+            });
+
+            // Upload model data to Nillion (using existing code)
+            const modelCID = await nillionWrapper.writeToNodes({
+                wallet_address: walletAddress,
+                recording_data: modelData
+            });
+
+            // Add content to smart contract
+            const tx = await agentService.contract.uploadContent(
+                videoCID,
+                modelCID,
+                title,
+                tags
+            );
+            await tx.wait();
+
+            res.json({
+                success: true,
+                data: {
+                    videoCID,
+                    modelCID,
+                    transaction: tx.hash
+                }
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                errors: [{ message: error.message }]
+            });
+        }
+    });
+
+    app.post('/api/v1/agent/query', async (req, res) => {
+        try {
+            const { query } = req.body;
+            const walletAddress = req.headers['x-wallet-address'];
+
+            const response = await agentService.handleUserQuery(query, walletAddress);
+            res.json({
+                success: true,
+                data: response
+            });
         } catch (error) {
             res.status(500).json({
                 success: false,
